@@ -1,0 +1,150 @@
+{
+  "name": "AI Orchestration Pro: Idea → Code → Deploy",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# 🚀 AI Orchestration Pro\n\n## Quick Start:\n1. **Add Credentials** (see docs)\n2. **Edit CONFIG Node** with your details\n3. **Execute Workflow**\n\n## What You Get:\n✅ Complete project architecture\n✅ Production-ready code\n✅ n8n automation workflow\n✅ GitHub repository setup\n✅ Documentation & deployment guides\n\n**Cost per run: $0.05-$0.15**\n**Time saved: 40+ hours per project**",
+        "height": 380,
+        "width": 400,
+        "color": 4
+      },
+      "id": "quick-start-guide",
+      "name": "📖 Quick Start",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [240, 240],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "🎯 Start Here - Execute Workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [800, 460],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Configuration Validator - Ensure all settings are correct\nconst config = {\n  idea: \"Build a Chrome extension that summarizes any webpage using AI and saves highlights to Notion\",\n  projectName: \"ai-page-summarizer\",\n  githubOwner: \"YOUR_GITHUB_USERNAME\", // CHANGE THIS\n  githubRepo: \"ai-projects\", // CHANGE THIS\n  features: [\"AI-powered\", \"Chrome extension\", \"Notion integration\"],\n  budget: \"free\"\n};\n\n// Validation\nif (config.githubOwner === \"YOUR_GITHUB_USERNAME\" || !config.githubOwner) {\n  throw new Error(\"❌ Please set your GitHub username in the CONFIG node parameters\");\n}\n\nif (config.githubOwner.includes(\"example\") || config.githubOwner.includes(\"test\")) {\n  throw new Error(\"❌ Please use your actual GitHub username, not example/test values\");\n}\n\nif (!config.idea || config.idea.length < 10) {\n  throw new Error(\"❌ Please provide a detailed project idea (min 10 characters)\");\n}\n\nif (!config.projectName || config.projectName.length < 2) {\n  throw new Error(\"❌ Please provide a valid project name\");\n}\n\nreturn { json: config };"
+      },
+      "id": "config-validator",
+      "name": "⚙️ CONFIG - Edit Your Settings Here",
+      "type": "n8n-nodes-base.code",
+      "position": [1020, 460],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={{ $credentials.googleApiKey }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"You are a senior product strategist. Analyze this business idea comprehensively:\\n\\n## PROJECT IDEA:\\n{{ $json.idea }}\\n\\n## PROJECT NAME:\\n{{ $json.projectName }}\\n\\nProvide structured analysis:\\n\\n### 🎯 BUSINESS VALUE\\n- Target market & audience\\n- Unique value proposition\\n- Revenue potential\\n- Competitive landscape\\n\\n### 🚀 PRODUCT FEATURES\\n- Core functionality\\n- User experience flow\\n- Key differentiators\\n- Scalability considerations\\n\\n### 💡 TECHNICAL INSIGHTS\\n- Implementation complexity\\n- Integration opportunities\\n- Potential technical debt\\n- Recommended tech stack\\n\\n### 📈 GROWTH STRATEGY\\n- User acquisition channels\\n- Monetization strategies\\n- Partnership opportunities\\n- Long-term vision\\n\\nBe strategic, data-driven, and actionable.\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"topK\": 40,\n    \"topP\": 0.9,\n    \"maxOutputTokens\": 4096\n  }\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "gemini-ideation",
+      "name": "1️⃣ Gemini - Business Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1240, 460],
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nlet businessAnalysis = \"Analysis not generated\";\nlet error = null;\n\ntry {\n  if (input?.candidates?.[0]?.content?.parts?.[0]?.text) {\n    businessAnalysis = input.candidates[0].content.parts[0].text;\n  } else if (input?.error) {\n    error = `Gemini API Error: ${input.error.message}`;\n  } else {\n    error = \"Unexpected response format from Gemini\";\n  }\n} catch (e) {\n  error = `Processing error: ${e.message}`;\n}\n\nif (error) {\n  businessAnalysis = `## ❌ Analysis Failed\\n\\n${error}\\n\\n**Continue anyway - architecture phase may still work.**`;\n}\n\nreturn {\n  json: {\n    businessAnalysis,\n    originalIdea: $('⚙️ CONFIG - Edit Your Settings Here').item.json.idea,\n    projectName: $('⚙️ CONFIG - Edit Your Settings Here').item.json.projectName,\n    githubOwner: $('⚙️ CONFIG - Edit Your Settings Here').item.json.githubOwner,\n    githubRepo: $('⚙️ CONFIG - Edit Your Settings Here').item.json.githubRepo,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "extract-analysis",
+      "name": "📦 Extract Business Analysis",
+      "type": "n8n-nodes-base.code",
+      "position": [1460, 460],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $credentials.anthropicApi.key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-5-sonnet-20241022\",\n  \"max_tokens\": 8000,\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": \"Create a PRODUCTION-READY technical architecture based on this business analysis:\\n\\n## BUSINESS ANALYSIS:\\n{{ $json.businessAnalysis }}\\n\\n## ORIGINAL IDEA:\\n{{ $json.originalIdea }}\\n\\n## PROJECT NAME:\\n{{ $json.projectName }}\\n\\nProvide COMPLETE technical specification:\\n\\n### 🏗️ SYSTEM ARCHITECTURE\\n- Component diagram with data flow\\n- Service boundaries and responsibilities\\n- API design (REST/GraphQL)\\n- Data models and relationships\\n\\n### 🛠️ TECHNOLOGY STACK\\n- Frontend framework + justification\\n- Backend language/framework\\n- Database technology\\n- Deployment platform\\n- Third-party services\\n\\n### 📁 PROJECT STRUCTURE\\n- Complete file/folder organization\\n- Configuration files needed\\n- Environment setup\\n- Build/deployment scripts\\n\\n### 🔧 IMPLEMENTATION PLAN\\n- Phase 1: MVP (Week 1)\\n- Phase 2: Core features (Week 2)\\n- Phase 3: Scaling (Week 3)\\n- Phase 4: Optimization (Week 4)\\n\\n### 🔒 SECURITY & COMPLIANCE\\n- Authentication/authorization\\n- Data protection measures\\n- API security practices\\n- Compliance considerations\\n\\nBe extremely detailed and production-focused.\"\n  }]\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "claude-architecture",
+      "name": "2️⃣ Claude - Technical Architecture",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1680, 460],
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nlet architecture = \"Architecture not generated\";\nlet error = null;\n\ntry {\n  if (input?.content?.[0]?.text) {\n    architecture = input.content[0].text;\n  } else if (input?.error) {\n    error = `Claude API Error: ${input.error.message}`;\n  } else {\n    error = \"Unexpected response format from Claude\";\n  }\n} catch (e) {\n  error = `Processing error: ${e.message}`;\n}\n\nif (error) {\n  architecture = `## ❌ Architecture Generation Failed\\n\\n${error}\\n\\n**Continue anyway - code generation may still work with business analysis.**`;\n}\n\nreturn {\n  json: {\n    architecture,\n    architectureError: error,\n    ...$('📦 Extract Business Analysis').item.json\n  }\n};"
+      },
+      "id": "extract-architecture",
+      "name": "📦 Extract Architecture",
+      "type": "n8n-nodes-base.code",
+      "position": [1900, 460],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.deepseek.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "deepseekApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $credentials.deepseekApi.key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"deepseek-chat\",\n  \"messages\": [{\n    \"role\": \"system\",\n    \"content\": \"You are a senior security architect and DevOps engineer. Your job is to identify risks, optimize architecture, and ensure production readiness.\"\n  }, {\n    \"role\": \"user\",\n    \"content\": \"Conduct thorough security and production review of this architecture:\\n\\n## TECHNICAL ARCHITECTURE:\\n{{ $json.architecture }}\\n\\n## BUSINESS CONTEXT:\\n{{ $json.businessAnalysis }}\\n\\nProvide CRITICAL review covering:\\n\\n### 🔒 SECURITY VULNERABILITIES\\n- Authentication flaws\\n- Data exposure risks\\n- Injection vulnerabilities\\n- API security gaps\\n- Dependency risks\\n\\n### ⚡ PERFORMANCE BOTTLENECKS\\n- Database query optimization\\n- Caching opportunities\\n- Load balancing needs\\n- CDN requirements\\n- Memory/CPU optimization\\n\\n### 📈 SCALABILITY LIMITATIONS\\n- Concurrent user handling\\n- Database scaling strategy\\n- Microservice boundaries\\n- Stateless design compliance\\n\\n### 🚀 PRODUCTION DEPLOYMENT\\n- Containerization requirements\\n- CI/CD pipeline design\\n- Monitoring and logging\\n- Backup and disaster recovery\\n\\n### 💡 OPTIMIZATION RECOMMENDATIONS\\n- Cost optimization opportunities\\n- Development speed improvements\\n- Maintenance reduction strategies\\n\\nBe brutally honest and highly specific.\"\n  }],\n  \"temperature\": 0.3,\n  \"max_tokens\": 6000\n}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "id": "deepseek-validation",
+      "name": "3️⃣ DeepSeek - Security & Production Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2120, 460],
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst architectureData = items[0].json;\nconst validationData = items[1]?.json;\n\nlet validation = \"Validation not performed\";\nlet finalArchitecture = architectureData.architecture;\n\ntry {\n  if (validationData?.choices?.[0]?.message?.content) {\n    validation = validationData.choices[0].message.content;\n    finalArchitecture = `${architectureData.architecture}\\n\\n---\\n\\n# 🔒 SECURITY & PRODUCTION REVIEW\\n\\n${validation}`;\n  } else if (validationData?.error) {\n    validation = `DeepSeek API Error: ${validationData.error.message}`;\n  }\n} catch (e) {\n  validation = `Processing error: ${e
